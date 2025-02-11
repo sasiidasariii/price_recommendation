@@ -1,2 +1,6 @@
-selenium
+streamlit
+pandas
+numpy
+scikit-learn
 webdriver-manager
+selenium

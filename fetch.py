@@ -16,7 +16,7 @@ def setup_driver():
     options = webdriver.ChromeOptions()
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
-    options.add_argument('--headless')  # Uncomment to run in background
+    #options.add_argument('--headless')  # Uncomment to run in background
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--ignore-certificate-errors')
     options.add_argument('--start-maximized')
@@ -65,6 +65,7 @@ def fetch_flipkart_products(wd, url, title_xpath, price_xpath, rating_xpath, rat
     
     return products
 
+# Function to fetch product details from Croma without visiting product pages
 # Function to fetch product details from Croma
 def fetch_croma_products(wd, url, title_xpath, price_xpath, product_link_xpath, rating_xpath, ratings_count_xpath, max_results=5):
     products = []
@@ -110,6 +111,7 @@ def fetch_croma_products(wd, url, title_xpath, price_xpath, product_link_xpath, 
 
     return products
 
+
 # Function to fetch product details from Reliance Digital
 
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, UnexpectedAlertPresentException
@@ -145,9 +147,6 @@ def fetch_reliance_products(wd, url, title_xpath, price_xpath, product_link_xpat
     products = []
     wd.get(url)
 
-    # Wait a bit to allow all elements (including potential popups) to load
-    WebDriverWait(wd, 5)
-
     # Handle any popups dynamically
     handle_popup(wd)
 
@@ -163,12 +162,12 @@ def fetch_reliance_products(wd, url, title_xpath, price_xpath, product_link_xpat
             price = prices[i].text.strip() if i < len(prices) else "Price not listed"
             product_url = product_links[i].get_attribute("href") if i < len(product_links) else ""
 
-            rating_text = "No Rating"
-            ratings_count_text = "No Data"
+            rating_text = "N/A"
+            ratings_count_text = "N/A"
 
             if product_url:
                 wd.execute_script("window.open('{}');".format(product_url))
-                wd.switch_to.window(wd.window_handles[1])
+                wd.switch_to.window(wd.window_handles[-1])  # Always switch to the last opened tab
 
                 # Handle popups again on the product page
                 handle_popup(wd)
@@ -176,23 +175,26 @@ def fetch_reliance_products(wd, url, title_xpath, price_xpath, product_link_xpat
                 try:
                     WebDriverWait(wd, 10).until(EC.presence_of_element_located((By.XPATH, rating_xpath)))
                     full_rating_text = wd.find_element(By.XPATH, rating_xpath).text.strip()
-                    rating_match = re.search(r'(\d+(\.\d+)?)', full_rating_text)  # Extract decimal number like 4.7
-                    rating_text = rating_match.group(1) if rating_match else "0.0"  # Default to 0.0 if not found
+                    rating_match = re.search(r'(\d+(\.\d+)?)', full_rating_text)
+                    rating_text = rating_match.group(1) if rating_match else "N/A"
+
                     ratings_count_element = wd.find_elements(By.XPATH, ratings_count_xpath)
                     if ratings_count_element:
                         full_text = ratings_count_element[0].text.strip()
-                        match = re.search(r'(\d+)', full_text)  # Extract the first number found
-                        ratings_count_text = match.group(1) if match else "0"  # Default to 0 if no number is found
+                        match = re.search(r'(\d+)', full_text)
+                        ratings_count_text = match.group(1) if match else "N/A"
                 except TimeoutException:
                     pass
 
                 wd.close()
-                wd.switch_to.window(wd.window_handles[0])
+
+                # Ensure there is a main tab to switch back to
+                if len(wd.window_handles) > 0:
+                    wd.switch_to.window(wd.window_handles[0])
 
             products.append((title, price, rating_text, ratings_count_text))
     
     except Exception as e:
-        products.append(("Error", "Not Available", f"Error: {str(e)}", "No Data"))
+        products.append(("Error", "Not Available", f"Error: {str(e)}", "N/A"))
 
     return products
-

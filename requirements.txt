@@ -12,5 +12,4 @@ matplotlib
 fuzzywuzzy
 python-Levenshtein
 seaborn
-google-chrome-stable
 chromedriver

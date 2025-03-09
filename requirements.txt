@@ -9,3 +9,5 @@ textblob
 nltk
 plotly
 matplotlib
+fuzzywuzzy
+python-Levenshtein

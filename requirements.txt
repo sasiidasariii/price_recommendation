@@ -7,3 +7,4 @@ selenium
 vaderSentiment
 textblob
 nltk
+plotly

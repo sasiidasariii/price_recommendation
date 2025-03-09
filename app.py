@@ -3,7 +3,8 @@ import pandas as pd
 from selenium import webdriver
 from fetch import setup_driver, fetch_flipkart_products, fetch_croma_products, fetch_reliance_products, flipkart_product_urls, fetch_reviews
 from analyze import analyze_sentiment
-from analyze import save_data_to_csv, preprocess_data, recommend_price, plot_price_analysis
+from analyze import save_data_to_csv, preprocess_data, recommend_price
+from visualization import plot_price_analysis
 
 # 🎨 Streamlit UI - Page Config
 
@@ -133,11 +134,32 @@ with tab2:
         else:
             st.warning("⚠ No valid data found for analysis.")
 
+
     # Show Price Analysis Graphs
-    if st.button("Show Price Analysis Graph"):
+    # ✅ Button to trigger the dashboard
+    if "show_analysis" not in st.session_state:
+        st.session_state.show_analysis = False
+
+    # if st.button("🔍 Show Price Analysis"):
+    #     st.session_state.show_analysis = True
+
+    if st.button("Show Price Analysis Graph"): 
+        st.session_state.show_analysis = True  
+    # 📊 Display dashboard if button was clicked
+
+    if st.session_state.show_analysis:
+        try:
+            plot_price_analysis(product_name)
+        except Exception as e:
+            pass
+
+    # if st.button("Show Price Analysis Graph"): 
+    #     st.session_state.show_analysis = True   
+
+    if st.session_state.show_analysis:    
         df = preprocess_data()
         if df is not None:
-            plot_price_analysis(df)  # ✅ Pass df to the function
+            plot_price_analysis()  # ✅ Pass df to the function
         else:
             st.warning("⚠ No data found for visualization.")
 

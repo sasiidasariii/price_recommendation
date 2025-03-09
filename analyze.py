@@ -11,6 +11,10 @@ from sklearn.preprocessing import StandardScaler
 from fuzzywuzzy import process  # Fuzzy string matching
 import seaborn as sns
 
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from textblob import TextBlob
+
+
 # File to store data
 DATA_FILE = "product_data.csv"
 
@@ -222,3 +226,18 @@ if st.button("Recommend Price"):
 
 if st.button("Show Price Analysis Graph"):
     plot_price_analysis()
+    
+    
+analyzer = SentimentIntensityAnalyzer()
+
+def analyze_sentiment(text):
+    if not text.strip():
+        return "Neutral"
+
+    vader_score = analyzer.polarity_scores(text)['compound']
+    blob_score = TextBlob(text).sentiment.polarity
+
+    combined_score = (vader_score + blob_score) / 2  # Averaging both
+
+    return "Positive" if combined_score > 0.2 else "Negative" if combined_score < -0.2 else "Neutral"
+

@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 from selenium import webdriver
-from fetch import setup_driver, fetch_flipkart_products, fetch_croma_products, fetch_reliance_products
+from fetch import setup_driver, fetch_flipkart_products, fetch_croma_products, fetch_reliance_products, flipkart_product_urls, fetch_reviews
+from analyze import analyze_sentiment
 from analyze import save_data_to_csv, preprocess_data, recommend_price, plot_price_analysis
 
 # 🎨 Streamlit UI - Page Config
@@ -35,6 +36,8 @@ if st.sidebar.button("Find Prices", key="find_prices_btn"):
         flipkart_price_xpath = "//div[contains(@class, 'Nx9bqj')]"
         flipkart_rating_xpath = "//div[contains(@class, 'XQDdHH')]"
         flipkart_ratings_count_xpath = "//span[contains(@class, 'Wphh3N')]/span/span[1]"
+        product_link_xpath = "//div[@class='tUxRFH']//a[@class='CGtC98']"
+
 
         # Croma XPaths
         croma_title_xpath = "//h3[contains(@class, 'product-title')]"
@@ -52,7 +55,11 @@ if st.sidebar.button("Find Prices", key="find_prices_btn"):
 
         # ✅ Fetch product data
         st.session_state.df_flipkart = pd.DataFrame(
-            fetch_flipkart_products(wd, flipkart_url, flipkart_title_xpath, flipkart_price_xpath, flipkart_rating_xpath, flipkart_ratings_count_xpath),
+            fetch_flipkart_products(
+                        wd, flipkart_url, flipkart_title_xpath, flipkart_price_xpath, 
+                        flipkart_rating_xpath, flipkart_ratings_count_xpath, product_link_xpath
+                    )
+                    ,
             columns=["Product Title", "Price", "Rating (⭐ out of 5)", "No. of Ratings"]
         )
         if not st.session_state.df_flipkart.empty:
@@ -88,7 +95,7 @@ if st.sidebar.button("Find Prices", key="find_prices_btn"):
 st.title("📊 Product Price & Rating Comparison")
 
 # 🔹 Tabs for better organization
-tab1, tab2, tab3 = st.tabs(["🛍 Compare Prices", "📈 Price Analysis", "💰 Recommend Price"])
+tab1, tab2, tab3, tab4 = st.tabs(["🛍 Compare Prices", "📈 Price Analysis", "💰 Recommend Price", "📝 Review Analysis"])
 
 # 📌 Tab 1 - Display Prices from Different Retailers
 with tab1:
@@ -150,3 +157,44 @@ with tab3:
                 st.success(f"✅ Recommended Selling Price: ₹{recommended_price:.2f}")
         else:
             st.warning("⚠ Please enter both cost price and product name.")
+            
+            
+# New session state for storing review data
+if "reviews_data" not in st.session_state:
+    st.session_state.reviews_data = None
+    
+    
+# 📌 Tab 4 - Review Sentiment Analysis
+with tab4:
+    st.header("📝 Sentiment Analysis of Product Reviews")
+
+    if st.button("Fetch & Analyze Reviews", key="fetch_reviews_btn"):
+        if st.session_state.df_flipkart is not None:
+            wd = setup_driver()
+
+            all_reviews = []
+            
+            # Iterate over stored URLs and fetch reviews
+            for product, url in flipkart_product_urls.items():
+                reviews = fetch_reviews(wd, url, "//div[@class='ZmyHeo']//div[contains(@class, '')]")
+                sentiments = [analyze_sentiment(review) for review in reviews]
+
+                for review, sentiment in zip(reviews, sentiments):
+                    all_reviews.append({"Product": product, "Review": review, "Sentiment": sentiment})
+
+            wd.quit()
+
+            # Convert to DataFrame and store in session state
+            st.session_state.reviews_data = pd.DataFrame(all_reviews)
+
+        if st.session_state.reviews_data is not None and not st.session_state.reviews_data.empty:
+            st.success("✅ Reviews fetched and analyzed successfully!")
+            st.dataframe(st.session_state.reviews_data)
+
+            # 📊 Show Sentiment Distribution
+            st.subheader("📊 Sentiment Distribution")
+            sentiment_counts = st.session_state.reviews_data["Sentiment"].value_counts()
+            st.bar_chart(sentiment_counts)
+        else:
+            st.warning("⚠ No reviews found for analysis.")
+

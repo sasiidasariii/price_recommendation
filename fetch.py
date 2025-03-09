@@ -10,6 +10,11 @@ from selenium.common.exceptions import NoAlertPresentException
 import pandas as pd
 import re  # Import regular expressions for text extraction
 
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+
 
 # Function to set up WebDriver
 def setup_driver():
@@ -29,7 +34,11 @@ def setup_driver():
     return webdriver.Chrome(service=service, options=options)
 
 # Function to fetch product details from Flipkart
-def fetch_flipkart_products(wd, url, title_xpath, price_xpath, rating_xpath, ratings_count_xpath, max_results=5):
+# Dictionary to store product URLs separately
+flipkart_product_urls = {}
+
+# Function to fetch product details from Flipkart
+def fetch_flipkart_products(wd, url, title_xpath, price_xpath, rating_xpath, ratings_count_xpath, product_link_xpath, max_results=5):
     products = []
     wd.get(url)
     try:
@@ -39,7 +48,8 @@ def fetch_flipkart_products(wd, url, title_xpath, price_xpath, rating_xpath, rat
         prices = wd.find_elements(By.XPATH, price_xpath)
         ratings = wd.find_elements(By.XPATH, rating_xpath)
         ratings_count = wd.find_elements(By.XPATH, ratings_count_xpath)
-        
+        product_links = wd.find_elements(By.XPATH, product_link_xpath)
+
         count = 0
         for i in range(len(titles)):
             if "Sponsored" in titles[i].text:
@@ -49,13 +59,18 @@ def fetch_flipkart_products(wd, url, title_xpath, price_xpath, rating_xpath, rat
             price = prices[i].text.strip() if i < len(prices) else "Price not listed"
             rating = ratings[i].text.strip() if i < len(ratings) else "No Rating"
             ratings_count_text = "No Data"
+
             if i < len(ratings_count):
                 full_text = ratings_count[i].text.strip()
                 ratings_match = re.search(r'([\d,]+)', full_text)  # Extract numbers with commas
                 if ratings_match:
                     ratings_count_text = ratings_match.group(1).replace(",", "")  # Remove commas
-
             
+            product_url = product_links[i].get_attribute("href") if i < len(product_links) else "URL Not Available"
+
+            # Store the URL separately
+            flipkart_product_urls[title] = product_url
+
             products.append((title, price, rating, ratings_count_text))
             count += 1
             if count >= max_results:
@@ -64,6 +79,7 @@ def fetch_flipkart_products(wd, url, title_xpath, price_xpath, rating_xpath, rat
         products.append(("Error", "Not Available", f"Error: {str(e)}", "No Data"))
     
     return products
+
 
 # Function to fetch product details from Croma without visiting product pages
 # Function to fetch product details from Croma
@@ -198,3 +214,27 @@ def fetch_reliance_products(wd, url, title_xpath, price_xpath, product_link_xpat
         products.append(("Error", "Not Available", f"Error: {str(e)}", "N/A"))
 
     return products
+
+# Function to fetch reviews from a product page
+def fetch_reviews(wd, url, review_xpath, max_reviews=3):
+    """Fetches up to max_reviews from the given product page URL."""
+    reviews = []
+    wd.get(url)
+
+    try:
+        # Wait until the reviews section is loaded
+        WebDriverWait(wd, 10).until(EC.presence_of_element_located((By.XPATH, review_xpath)))
+        
+        # Find review elements
+        review_elements = wd.find_elements(By.XPATH, review_xpath)
+
+        # Extract text from the first 'max_reviews' reviews
+        for review in review_elements[:max_reviews]:  
+            reviews.append(review.text.strip())
+
+    except Exception as e:
+        reviews.append(f"Error: {str(e)}")
+
+    return reviews
+
+

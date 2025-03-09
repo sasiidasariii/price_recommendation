@@ -4,3 +4,6 @@ numpy
 scikit-learn
 webdriver-manager
 selenium
+vaderSentiment
+textblob
+nltk

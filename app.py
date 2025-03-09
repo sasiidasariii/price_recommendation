@@ -6,6 +6,7 @@ from analyze import analyze_sentiment
 from analyze import save_data_to_csv, preprocess_data, recommend_price, plot_price_analysis
 
 # 🎨 Streamlit UI - Page Config
+
 st.set_page_config(page_title="Price & Rating Comparison", page_icon="📊", layout="wide")
 
 # ✅ Initialize session state variables if they don't exist

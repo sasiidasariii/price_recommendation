@@ -236,5 +236,3 @@ def fetch_reviews(wd, url, review_xpath, max_reviews=3):
         reviews.append(f"Error: {str(e)}")
 
     return reviews
-
-

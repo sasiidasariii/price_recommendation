@@ -7,7 +7,6 @@ from analyze import save_data_to_csv, preprocess_data, recommend_price
 from visualization import plot_price_analysis
 
 # 🎨 Streamlit UI - Page Config
-
 st.set_page_config(page_title="Price & Rating Comparison", page_icon="📊", layout="wide")
 
 # ✅ Initialize session state variables if they don't exist
@@ -21,14 +20,24 @@ if "df_croma" not in st.session_state:
 # 🎯 Sidebar
 st.sidebar.title("🔍 Search & Compare")
 product_name = st.sidebar.text_input("Enter Product Name")
+model_name = st.sidebar.text_input("Enter Model Name (optional)")
+color = st.sidebar.text_input("Enter Color (optional)")
+price_range = st.sidebar.slider("Enter Price Range", 0, 1000000, (0, 1000000))
 
 if st.sidebar.button("Find Prices", key="find_prices_btn"):
     if product_name.strip():
-        st.sidebar.write("⏳ Searching for product...")
+        # Combine the user inputs (product name, model name, color)
+        search_query = product_name
+        if model_name.strip():
+            search_query += " " + model_name
+        if color.strip():
+            search_query += " " + color
 
-        flipkart_url = f"https://www.flipkart.com/search?q={product_name.replace(' ', '+')}"
-        reliance_url = f"https://www.reliancedigital.in/products?q={product_name.replace(' ', '%20')}&page_no=1&page_size=12&page_type=number"
-        croma_url = f"https://www.croma.com/searchB?q={product_name.replace(' ', '%20')}%3Arelevance"
+        st.sidebar.write(f"⏳ Searching for products matching: {search_query}...")
+
+        flipkart_url = f"https://www.flipkart.com/search?q={search_query.replace(' ', '+')}"
+        reliance_url = f"https://www.reliancedigital.in/products?q={search_query.replace(' ', '%20')}&page_no=1&page_size=12&page_type=number"
+        croma_url = f"https://www.croma.com/searchB?q={search_query.replace(' ', '%20')}%3Arelevance"
 
         # Set up WebDriver
         wd = setup_driver()
@@ -39,7 +48,6 @@ if st.sidebar.button("Find Prices", key="find_prices_btn"):
         flipkart_rating_xpath = "//div[contains(@class, 'XQDdHH')]"
         flipkart_ratings_count_xpath = "//span[contains(@class, 'Wphh3N')]/span/span[1]"
         product_link_xpath = "//div[@class='tUxRFH']//a[@class='CGtC98']"
-
 
         # Croma XPaths
         croma_title_xpath = "//h3[contains(@class, 'product-title')]"
@@ -85,11 +93,18 @@ if st.sidebar.button("Find Prices", key="find_prices_btn"):
 
         # Combine all data and save for analysis
         df_combined = pd.concat([st.session_state.df_flipkart, st.session_state.df_reliance, st.session_state.df_croma], ignore_index=True)
+
+        # Filter based on the price range
+        df_combined = df_combined[(df_combined["Price"].apply(pd.to_numeric, errors='coerce') >= price_range[0]) & 
+                                  (df_combined["Price"].apply(pd.to_numeric, errors='coerce') <= price_range[1])]
+
+        # Show filtered results
         if not df_combined.empty:
-            save_data_to_csv(df_combined)
-            st.sidebar.success("✅ Product Data Fetched!")
+            save_data_to_csv(df_combined)  # ✅ Save filtered data to CSV
+            st.sidebar.success("✅ Product Data Fetched and Filtered!")
+            st.table(df_combined)
         else:
-            st.sidebar.warning("⚠ No data found for the entered product.")
+            st.sidebar.warning("⚠ No data found matching the filters.")
     else:
         st.sidebar.warning("⚠ Please enter a product name.")
 
@@ -121,6 +136,7 @@ with tab1:
             st.table(st.session_state.df_croma)
         else:
             st.info("🔍 Search for a product to see Croma results.")
+
 
 # 📌 Tab 2 - Analyze Data & Visualize Prices
 # 📌 Tab 2 - Analyze Data & Visualize Prices
@@ -220,4 +236,3 @@ with tab4:
             st.bar_chart(sentiment_counts)
         else:
             st.warning("⚠ No reviews found for analysis.")
-

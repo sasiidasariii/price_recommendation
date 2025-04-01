@@ -240,4 +240,3 @@ def analyze_sentiment(text):
     combined_score = (vader_score + blob_score) / 2  # Averaging both
 
     return "Positive" if combined_score > 0.2 else "Negative" if combined_score < -0.2 else "Neutral"
-

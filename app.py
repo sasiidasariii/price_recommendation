@@ -49,6 +49,7 @@ if st.sidebar.button("Find Prices", key="find_prices_btn"):
         flipkart_ratings_count_xpath = "//span[contains(@class, 'Wphh3N')]/span/span[1]"
         product_link_xpath = "//div[@class='tUxRFH']//a[@class='CGtC98']"
 
+
         # Croma XPaths
         croma_title_xpath = "//h3[contains(@class, 'product-title')]"
         croma_price_xpath = "//span[contains(@class, 'amount')]"
@@ -93,18 +94,11 @@ if st.sidebar.button("Find Prices", key="find_prices_btn"):
 
         # Combine all data and save for analysis
         df_combined = pd.concat([st.session_state.df_flipkart, st.session_state.df_reliance, st.session_state.df_croma], ignore_index=True)
-
-        # Filter based on the price range
-        df_combined = df_combined[(df_combined["Price"].apply(pd.to_numeric, errors='coerce') >= price_range[0]) & 
-                                  (df_combined["Price"].apply(pd.to_numeric, errors='coerce') <= price_range[1])]
-
-        # Show filtered results
         if not df_combined.empty:
-            save_data_to_csv(df_combined)  # ✅ Save filtered data to CSV
-            st.sidebar.success("✅ Product Data Fetched and Filtered!")
-            st.table(df_combined)
+            save_data_to_csv(df_combined)
+            st.sidebar.success("✅ Product Data Fetched!")
         else:
-            st.sidebar.warning("⚠ No data found matching the filters.")
+            st.sidebar.warning("⚠ No data found for the entered product.")
     else:
         st.sidebar.warning("⚠ Please enter a product name.")
 
@@ -136,7 +130,6 @@ with tab1:
             st.table(st.session_state.df_croma)
         else:
             st.info("🔍 Search for a product to see Croma results.")
-
 
 # 📌 Tab 2 - Analyze Data & Visualize Prices
 # 📌 Tab 2 - Analyze Data & Visualize Prices
@@ -235,4 +228,4 @@ with tab4:
             sentiment_counts = st.session_state.reviews_data["Sentiment"].value_counts()
             st.bar_chart(sentiment_counts)
         else:
-            st.warning("⚠ No reviews found for analysis.")
+            st.warning("⚠ No reviews found for analysis.")

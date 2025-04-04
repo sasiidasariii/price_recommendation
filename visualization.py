@@ -1,68 +1,17 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import numpy as np
-
-def display_price_histogram(df, product):
-    # Convert price column to numerical values
-    df['Price'] = df['Price'].replace({'₹': '', ',': ''}, regex=True).astype(float)
-
-    # Determine dynamic bin size based on price range
-    price_range = df['Price'].max() - df['Price'].min()
-    bin_size = max(5000, price_range // 10)  # At least 5000, but adjusts based on range
-    bins = np.arange(min(df['Price']), max(df['Price']) + bin_size, bin_size)
-    df['Price Range'] = pd.cut(df['Price'], bins, right=False).astype(str)
-
-    # Group products by price range and source
-    grouped = df.groupby(['Price Range', 'Source']).agg(
-        Count=('Price', 'count'),
-        Sample_Product=('Product Title', 'first'),  # Select first product in each bin and source
-        All_Products=('Product Title', lambda x: '<br>'.join(x))  # All products in bin and source
-    ).reset_index()
-
-    # Generate colors for sources
-    unique_sources = grouped['Source'].unique()
-    colors = px.colors.qualitative.Set3[:len(unique_sources)]
-    color_map = {source: colors[i] for i, source in enumerate(unique_sources)}
-
-    # Create interactive histogram
-    fig = px.bar(
-        grouped, 
-        x='Price Range', 
-        y='Count', 
-        color='Source', 
-        text='Count',
-        labels={'Price Range': 'Price (₹)', 'Count': 'Frequency', 'Source': 'Retailer'},
-        title='Histogram of ' + product ,
-        hover_data={'Sample_Product': True, 'All_Products': True},
-        color_discrete_map=color_map
-    )
-
-    # Streamlit integration
-    st.header("📊 Price Distribution of " + product )
-    st.plotly_chart(fig, use_container_width=True)
-
-    # Show details of products in selected bin
-    selected_bin = st.selectbox("Select a Price Range to view all products", grouped['Price Range'].unique())
-    selected_group = grouped[grouped['Price Range'] == selected_bin]
-
-    st.markdown(f"### Products in {selected_bin}")
-    for source in selected_group['Source'].unique():
-        st.markdown(f"#### Source: {source}")
-        source_products = selected_group[selected_group['Source'] == source]['All_Products'].values[0]
-        st.markdown(source_products.replace('<br>', '\n'))
-
+import time  # corrected import
 
 # 🛑 Load Data with Dynamic Refresh
 @st.cache_data(ttl=60)  # Refresh data every 60 seconds
 def load_data():
     df = pd.read_csv("product_data.csv")
     df["Rating"] = df["Rating (⭐ out of 5)"].copy()
-    df = df.drop(columns=["Rating (⭐ out of 5)"])
-    df["Rating"] = pd.to_numeric(df["Rating"], errors='coerce')
     df["Price"] = df["Price"].str.replace("₹", "").str.replace(",", "").astype(float)
-    df["Rating"] = df["Rating"].fillna(df["Rating"].median())
-    
+    df["Rating"] = pd.to_numeric(df["Rating"], errors="coerce")  # Convert to numeric, setting errors to NaN
+    df["Rating"] = df["Rating"].fillna(df["Rating"].median())  # Now compute the median safely
+
     return df.dropna(subset=["Price", "Rating", "Product Title"])
 
 def plot_price_analysis(product=None):
@@ -131,8 +80,7 @@ def plot_price_analysis(product=None):
             (df["Source"].isin(st.session_state["source_filter"])) & 
             (df["Rating"] >= st.session_state["rating_filter"])
         ]
-        df_filtered["Product Title"] = df_filtered["Product Title"].apply(lambda x: x[:32] + "..." if len(x) > 10 else x)
-        
+
         # 🏷 Main Title
         st.title("📱 "+product+" Product Dashboard")
 
@@ -164,8 +112,5 @@ def plot_price_analysis(product=None):
         st.subheader("📋 Filtered Product Data")
         st.dataframe(df_filtered)
 
-        display_price_histogram(df_filtered, product)
-        
-        #st.markdown("Developed with ❤ using Streamlit and Plotly")
     except Exception as e:
         pass

@@ -225,7 +225,12 @@ if st.button("Recommend Price"):
         st.warning("⚠ Please enter both cost price and product name.")
 
 if st.button("Show Price Analysis Graph"):
-    plot_price_analysis()
+    df = preprocess_data()
+
+    if df is not None and not df.empty:
+        plot_price_analysis(df)
+    else:
+        st.warning("⚠ No data available for visualization.")
     
     
 analyzer = SentimentIntensityAnalyzer()

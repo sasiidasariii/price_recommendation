@@ -13,3 +13,4 @@ fuzzywuzzy
 python-Levenshtein
 seaborn
 chromedriver
+wordcloud

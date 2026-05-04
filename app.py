@@ -5,6 +5,9 @@ from fetch import setup_driver, fetch_flipkart_products, fetch_croma_products, f
 from analyze import analyze_sentiment
 from analyze import save_data_to_csv, preprocess_data, recommend_price
 from visualization import plot_price_analysis
+from wordcloud import WordCloud
+import time
+import matplotlib.pyplot as plt
 
 # 🎨 Streamlit UI - Page Config
 st.set_page_config(page_title="Price & Rating Comparison", page_icon="📊", layout="wide")
@@ -43,11 +46,12 @@ if st.sidebar.button("Find Prices", key="find_prices_btn"):
         wd = setup_driver()
 
         # Flipkart XPaths
-        flipkart_title_xpath = "//div[contains(@class, 'KzDlHZ')]"
-        flipkart_price_xpath = "//div[contains(@class, 'Nx9bqj')]"
-        flipkart_rating_xpath = "//div[contains(@class, 'XQDdHH')]"
-        flipkart_ratings_count_xpath = "//span[contains(@class, 'Wphh3N')]/span/span[1]"
-        product_link_xpath = "//div[@class='tUxRFH']//a[@class='CGtC98']"
+        # Flipkart XPaths
+        flipkart_title_xpath = "//div[contains(@class,'RG5Slk')]"
+        flipkart_price_xpath = "//div[contains(@class,'hZ3P6w')]"
+        flipkart_rating_xpath = "//div[contains(@class,'MKiFS6')]"
+        flipkart_ratings_count_xpath = "//span[contains(text(),'Ratings')]"
+        product_link_xpath = "//a[contains(@class,'k7wcnx')]"
 
 
         # Croma XPaths
@@ -59,10 +63,10 @@ if st.sidebar.button("Find Prices", key="find_prices_btn"):
 
         # Reliance XPaths
         reliance_title_xpath = "//div[contains(@class, 'product-card-title')]"
-        reliance_price_xpath = "//div[contains(@class, 'price-container')]//div[contains(@class, 'price')]"
+        reliance_price_xpath = "//div[contains(@class,'price-container')]//div[contains(@class,'price')]"
         reliance_product_link_xpath = "//div[contains(@class, 'grid')]//a"
         reliance_rating_xpath = "//span[contains(@class, 'rd-feedback-service-average-rating-total-count')]"
-        reliance_ratings_count_xpath = "//span[contains(@class, 'rd-feedback-service-jds-desk-body-s')]"
+        reliance_ratings_count_xpath = "//span[contains(@class, 'rd-feedback-service-jds-desk-body-s.rd-feedback-service-jds-color-grey-80')]"
 
         # ✅ Fetch product data
         st.session_state.df_flipkart = pd.DataFrame(
@@ -198,34 +202,84 @@ if "reviews_data" not in st.session_state:
     
 # 📌 Tab 4 - Review Sentiment Analysis
 with tab4:
+
     st.header("📝 Sentiment Analysis of Product Reviews")
 
     if st.button("Fetch & Analyze Reviews", key="fetch_reviews_btn"):
+
         if st.session_state.df_flipkart is not None:
+
             wd = setup_driver()
 
             all_reviews = []
-            
-            # Iterate over stored URLs and fetch reviews
+
             for product, url in flipkart_product_urls.items():
-                reviews = fetch_reviews(wd, url, "//div[@class='ZmyHeo']//div[contains(@class, '')]")
-                sentiments = [analyze_sentiment(review) for review in reviews]
+
+                reviews = fetch_reviews(wd, url)
+
+                sentiments = [analyze_sentiment(r) for r in reviews]
 
                 for review, sentiment in zip(reviews, sentiments):
-                    all_reviews.append({"Product": product, "Review": review, "Sentiment": sentiment})
+                    all_reviews.append({
+                        "Product": product,
+                        "Review": review,
+                        "Sentiment": sentiment
+                    })
 
             wd.quit()
 
-            # Convert to DataFrame and store in session state
             st.session_state.reviews_data = pd.DataFrame(all_reviews)
 
-        if st.session_state.reviews_data is not None and not st.session_state.reviews_data.empty:
-            st.success("✅ Reviews fetched and analyzed successfully!")
-            st.dataframe(st.session_state.reviews_data)
+        if (
+            st.session_state.reviews_data is not None
+            and not st.session_state.reviews_data.empty
+        ):
 
-            # 📊 Show Sentiment Distribution
+            st.success("✅ Reviews fetched successfully!")
+
+            df_reviews = st.session_state.reviews_data
+
+            st.dataframe(df_reviews)
+
+            # 📊 Sentiment Bar Chart
             st.subheader("📊 Sentiment Distribution")
-            sentiment_counts = st.session_state.reviews_data["Sentiment"].value_counts()
+
+            sentiment_counts = df_reviews["Sentiment"].value_counts()
+
             st.bar_chart(sentiment_counts)
+
+            # 🥧 Sentiment Pie Chart
+            st.subheader("🥧 Sentiment Ratio")
+
+            fig, ax = plt.subplots()
+            ax.pie(
+                sentiment_counts,
+                labels=sentiment_counts.index,
+                autopct="%1.1f%%",
+                startangle=90
+            )
+            ax.axis("equal")
+
+            st.pyplot(fig)
+            plt.close(fig)
+
+            # ☁️ WordCloud
+            st.subheader("☁️ Word Cloud of Reviews")
+
+            text = " ".join(df_reviews["Review"])
+
+            wordcloud = WordCloud(
+                width=800,
+                height=400,
+                background_color="white"
+            ).generate(text)
+
+            fig_wc, ax_wc = plt.subplots(figsize=(10,5))
+            ax_wc.imshow(wordcloud)
+            ax_wc.axis("off")
+
+            st.pyplot(fig_wc)
+            plt.close(fig_wc)
+
         else:
-            st.warning("⚠ No reviews found for analysis.")
+            st.warning("⚠ No reviews found.")
